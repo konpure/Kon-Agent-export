@@ -1,0 +1,45 @@
+syntax = "proto3";
+package protocol;
+
+option go_package = "github.com/konpure/Kon-Agent/pkg/protocol";
+
+enum MetricType {
+  CPU_USAGE = 0;
+  MEMORY_USAGE = 1;
+  NETWORK_PACKETS = 2;
+  EBPF_RAW = 3;
+}
+
+message Metric {
+  int64 timestamp = 1;
+  string name = 2;
+  double value = 3;
+  map<string, string> labels = 4;
+  MetricType type = 5;
+  bytes payload = 6;
+}
+
+message MetricsRequest {
+  string agent_id = 1;
+}
+
+message MetricsResponse {
+  repeated Metric metrics = 1;
+}
+
+message BatchMetricsRequest {
+  repeated Metric metrics = 1;
+  string agent_id = 2;
+  int64 timestamp = 3;
+}
+
+message BatchMetricsResponse {
+  bool success = 1;
+  string message = 2;
+  int32 accepted_count = 3;
+  int32 rejected_count = 4;
+}
+
+service MetricsService {
+  rpc SendBatchMetrics (BatchMetricsRequest) returns (BatchMetricsResponse);
+}
