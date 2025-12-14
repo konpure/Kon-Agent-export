@@ -34,6 +34,11 @@ func InitQuicServer(processor processor.Processor, storage storage.Storage) {
 }
 
 func main() {
+	StartQuicServer(":7843")
+}
+
+/**
+func main() {
 	// 生成自签名证书
 	tlsCert, err := generateSelfSignedCert()
 	if err != nil {
@@ -64,6 +69,55 @@ func main() {
 	defer listener.Close()
 
 	fmt.Println("QUIC server listening on :7843")
+
+	for {
+		// 接受新连接
+		conn, err := listener.Accept(context.Background())
+		if err != nil {
+			log.Printf("Failed to accept connection: %v", err)
+			continue
+		}
+
+		fmt.Println("New connection established")
+
+		// 处理连接
+		go handleConnection(conn)
+	}
+}
+**/
+
+// StartQuicServer 启动QUIC服务器
+func StartQuicServer(addr string) error {
+	// 生成自签名证书
+	tlsCert, err := generateSelfSignedCert()
+	if err != nil {
+		return fmt.Errorf("failed to generate certificate: %w", err)
+	}
+
+	// TLS配置
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+		NextProtos:   []string{"kon-agent"},
+		Rand:         rand.Reader,
+		MinVersion:   tls.VersionTLS13,
+		MaxVersion:   tls.VersionTLS13,
+	}
+
+	// QUIC监听配置
+	quicConfig := &quic.Config{
+		MaxIncomingStreams:    1000,
+		MaxIncomingUniStreams: 1000,
+		KeepAlivePeriod:       10 * time.Second,
+	}
+
+	// 监听QUIC连接
+	listener, err := quic.ListenAddr(addr, tlsConfig, quicConfig)
+	if err != nil {
+		return fmt.Errorf("failed to listen: %w", err)
+	}
+	defer listener.Close()
+
+	fmt.Printf("QUIC server listening on %s\n", addr)
 
 	for {
 		// 接受新连接
