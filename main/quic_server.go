@@ -11,6 +11,8 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"fmt"
+	"github.com/konpure/Kon-Agent-export/pkg/processor"
+	"github.com/konpure/Kon-Agent-export/pkg/storage"
 	"io"
 	"log"
 	"math/big"
@@ -20,6 +22,16 @@ import (
 	"github.com/quic-go/quic-go"
 	"google.golang.org/protobuf/proto"
 )
+
+var (
+	dataProcessor processor.Processor
+	dataStorage   storage.Storage
+)
+
+func InitQuicServer(processor processor.Processor, storage storage.Storage) {
+	dataProcessor = processor
+	dataStorage = storage
+}
 
 func main() {
 	// 生成自签名证书
@@ -193,6 +205,19 @@ func handleUniStream(stream *quic.ReceiveStream) {
 				fmt.Println("---")
 				continue
 			}
+
+			// 处理单个数据
+			processedMetric, err := dataProcessor.ProcessSingleMetric("", &metric)
+			if err != nil {
+				log.Printf("Failed to save single metric: %v", err)
+			}
+
+			// 保存到存储
+			err = dataStorage.SaveMetrics([]processor.ProcessedMetric{*processedMetric})
+			if err != nil {
+				log.Printf("Failed to save single metric: %v", err)
+			}
+
 			// 成功解析为单个Metric
 			fmt.Printf("Received Metric from stream %d:\n", stream.StreamID())
 			fmt.Printf("Name: %s\n", metric.Name)
@@ -204,6 +229,19 @@ func handleUniStream(stream *quic.ReceiveStream) {
 			}
 			fmt.Println("---")
 		} else {
+			// 处理批量数据
+			processedMetrics, err := dataProcessor.ProcessBatchRequest(&batchReq)
+			if err != nil {
+				log.Printf("Failed to process batch metrics: %v", err)
+				continue
+			}
+
+			// 保存到存储
+			err = dataStorage.SaveMetrics(processedMetrics)
+			if err != nil {
+				log.Printf("Failed to save batch metrics: %v", err)
+			}
+
 			// 成功解析为BatchMetricsRequest
 			fmt.Printf("Received BatchMetricsRequest from stream %d:\n", stream.StreamID())
 			fmt.Printf("Agent ID: %s\n", batchReq.AgentId)
