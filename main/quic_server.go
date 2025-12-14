@@ -33,9 +33,9 @@ func InitQuicServer(processor processor.Processor, storage storage.Storage) {
 	dataStorage = storage
 }
 
-func main() {
-	StartQuicServer(":7843")
-}
+// func main() {
+// StartQuicServer(":7843")
+// }
 
 /**
 func main() {
